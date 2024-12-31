@@ -1,0 +1,379 @@
+---
+title: "NJ Election 2024 V2"
+output: html_document
+date: "2024-12-04"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+>electoral maps
+>comparison of voter turnout of counties that flipped
+
+```{r load packages}
+
+library(tidyverse)
+library(reshape)
+devtools::install_github("UrbanInstitute/urbnmapr")
+
+```
+
+
+```{r load data}
+
+nj_turnout <- read_csv("2024-2020-official-general-voter-turnout-1.csv")
+  
+nj_turnout$Year <- as.character(nj_turnout$Year)
+
+nj_turnout$`Turnout` <- (nj_turnout$`Total Number of Ballots Cast` - nj_turnout$`Total Number of Ballots Rejected`) / nj_turnout$`Total Number of Registered Voters`
+
+nj_turnout$`Turnout Label` <- paste0(round((nj_turnout$Turnout * 100), 1), "%")
+
+nj_turnout <- nj_turnout %>%
+  arrange(desc(COUNTY))
+
+county_name <- c("Atlantic", "Cumb.  ", "Gloucester", "Morris", "Passaic")
+registered_voters <- c(204801, 89731, 223090, 389909, 327853, 207405, 97718	, 225029, 398506, 339508)
+registered_dem_voters <- c(72772, 33770, 89628, 112759, 131089, 69648, 31910, 83702, 119395, 132106)
+registered_rep_voters <- c(54398, 21424, 55460, 133470, 67070, 60558, 24884, 63732, 138802, 76702)
+dem_votes <- c(73808, 32742, 86702, 153881, 129097, 61879, 26577, 78708, 135672, 95156)
+rep_votes <- c(64438, 28952, 83340, 141134, 92009, 65817, 28675, 83326, 143439, 100954)
+year <- c(2020, 2020, 2020, 2020, 2020, 2024, 2024, 2024, 2024, 2024)
+
+turnout_df <- data.frame(year, county_name, registered_voters, registered_dem_voters, registered_rep_voters, dem_votes, rep_votes) %>%
+  mutate(dem_turnout = dem_votes / registered_voters,
+         rep_turnout = rep_votes / registered_voters) %>%
+  mutate(dem_turnout_label = paste0(round(dem_turnout*100, 1), "%"),
+         rep_turnout_label = paste0(round(rep_turnout*100, 1), "%"))
+
+```
+
+```{r bar graphs}
+
+nj_turnout %>%
+  filter(COUNTY == "Atlantic" | COUNTY == "Cumberland" | COUNTY == "Gloucester" | COUNTY == "Morris" | COUNTY == "Passaic" | COUNTY == "All Counties") %>%
+  ggplot(aes(x = factor(COUNTY, levels = rev(levels(factor(COUNTY)))), y = Turnout, fill = Year)) +
+  geom_bar(position = position_dodge2(reverse = TRUE), stat = "identity") +
+  geom_text(aes(label = `Turnout Label`, group = Year), position = position_dodge2(reverse = TRUE, width = 1), hjust = 2, size = 4, family = "Georgia", fontface = "bold", color = "white") +
+  scale_fill_manual(values = c("#00acdf","#EA4C46")) +
+  coord_flip() +
+  ggtitle("\nNew Jersey Voter Turnout Decreased in 2024") +
+  labs(subtitle = "Percentage of all ballots cast out of all registered voters\nfor the last two Presidential elections in total across the state and\nin counties that flipped from Democrat to Republican in 2024.",
+       caption = "Source: New Jersey Voter Information Portal | github: julia-tache") +
+  theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
+        plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
+        panel.background = element_rect(fill = "#F5F5F5", color = NA),
+        panel.grid.major = element_line(color = "#F5F5F5"),
+        panel.grid.minor = element_line(color = "#F5F5F5"),
+        strip.text = element_text(size = 14),
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5),
+        plot.caption = element_text(size = 10, face = "italic", hjust = 0.5),
+        legend.title = element_text(hjust = 0.5),
+        legend.background = element_rect(fill = "#F5F5F5"),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 12),
+        axis.ticks = element_blank(),
+        text = element_text(family = "Georgia", size = 13))
+
+ggsave("nj_voters_bargraph.png")
+
+```
+
+
+```{r bar graphs}
+
+# dems
+turnout_df %>%
+  ggplot(aes(x = county_name, y = dem_turnout)) +
+  geom_bar(position = "dodge", stat = "identity", fill = "#00acdf") +
+  facet_wrap(~year) +
+  ggtitle("\nNJ Voter Turnout") +
+  labs(subtitle = "Percentage of Democratic ballots cast out of all registered voters\nfor the last two Presidential elections in counties that flipped\nfrom Democrat to Republican in 2024.",
+       caption = "Source: New Jersey Voter Information Portal | github: julia-tache") +
+  geom_text(aes(label = dem_turnout_label), size = 4, vjust = 1.75, family = "Georgia", fontface = "bold", color = "white") +
+  theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
+        plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
+        panel.background = element_rect(fill = "#F5F5F5", color = NA),
+        panel.grid.major = element_line(color = "#F5F5F5"),
+        panel.grid.minor = element_line(color = "#F5F5F5"),
+        strip.text = element_text(size = 14),
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5),
+        plot.caption = element_text(size = 10, face = "italic", hjust = 0.5),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 8),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 12),
+        axis.ticks = element_blank(),
+        text = element_text(family = "Georgia", size = 13))
+
+ggsave("nj_voters_dem_bargraph.png")
+
+# reps
+turnout_df %>%
+  ggplot(aes(x = county_name, y = rep_turnout)) +
+  geom_bar(position = "dodge", stat = "identity", fill = "#EA4C46") +
+  facet_wrap(~year) +
+  ggtitle("\nNJ Voter Turnout") +
+  labs(subtitle = "Percentage of Republican ballots cast out of all registered voters\nfor the last two Presidential elections in counties that flipped\nfrom Democrat to Republican in 2024.",
+       caption = "Source: New Jersey Voter Information Portal | github: julia-tache") +
+  geom_text(aes(label = rep_turnout_label), size = 4, vjust = 1.75, family = "Georgia", fontface = "bold", color = "white") +
+  theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
+        plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
+        panel.background = element_rect(fill = "#F5F5F5", color = NA),
+        panel.grid.major = element_line(color = "#F5F5F5"),
+        panel.grid.minor = element_line(color = "#F5F5F5"),
+        strip.text = element_text(size = 14),
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5),
+        plot.caption = element_text(size = 10, face = "italic", hjust = 0.5),
+        axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 8),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 12),
+        axis.ticks = element_blank(),
+        text = element_text(family = "Georgia", size = 13))
+
+ggsave("nj_voters_rep_bargraph.png")
+
+```
+
+
+```{r create datasets for maps}
+
+# sources: https://www.cnn.com/election/2020/results/state/new-jersey
+# https://www.cnn.com/election/2024/results/new-jersey
+
+county_name <- c("Atlantic County",
+"Bergen County",
+"Burlington County",
+"Camden County",
+"Cape May County",
+"Cumberland County",
+"Essex County",
+"Gloucester County",
+"Hudson County",
+"Hunterdon County",
+"Mercer County",
+"Middlesex County",
+"Monmouth County",
+"Morris County",
+"Ocean County",
+"Passaic County",
+"Salem County",
+"Somerset County",
+"Sussex County",
+"Union County",
+"Warren County")
+percent_lead <- c(0.066, 0.164, 0.196, 0.334, 0.159, 0.06, 0.555, 0.02, 0.462, 0.044, 0.4, 0.22, 0.028, 0.042, 0.286, 0.165, 0.128, 0.21, 0.195, 0.355, 0.161)
+percent_lead_2024 <- c(0.03, 0.034, 0.166, 0.274, 0.192, 0.037, 0.449, 0.028, 0.279, 0.067, 0.338, 0.08, 0.114, 0.027, 0.359, 0.028, 0.191,0.139,0.249,0.241,0.207)
+party_lead_2024 <- c("R", "D", "D", "D", "R", "R", "D", "R", "D", "R", "D", "D", "R", "R", "R", "R", "R", "D", "R", "D", "R")
+party_lead <- c("D", "D", "D", "D", "R", "D", "D", "D", "D", "R", "D", "D", "R", "D", "R", "D", "R", "D", "R", "D", "R")
+
+results <- data.frame(county_name, percent_lead_2024, party_lead_2024, percent_lead, party_lead)
+
+results <- results %>%
+  mutate(party_perc_lead_2024 = case_when(
+  percent_lead_2024 < 0.05 ~ "_lead_0_5",
+  percent_lead_2024 >= 0.05 & percent_lead_2024 < 0.10 ~ "_lead_5",
+  percent_lead_2024 >= 0.10 & percent_lead_2024 < 0.20 ~ "_lead_10",
+  percent_lead_2024 >= 0.20 ~ "_lead_20")) %>%
+  mutate(party_perc_lead = case_when(
+  percent_lead < 0.05 ~ "_lead_0_5",
+  percent_lead >= 0.05 & percent_lead < 0.10 ~ "_lead_5",
+  percent_lead >= 0.10 & percent_lead < 0.20 ~ "_lead_10",
+  percent_lead >= 0.20 ~ "_lead_20"))
+
+results$party_perc_lead_2024 <- paste0(results$party_lead_2024, results$party_perc_lead_2024)
+results$party_perc_lead <- paste0(results$party_lead, results$party_perc_lead)
+```
+
+
+```{r county map #1 - 2020 NJ Presidential Election Results}
+
+results <- results %>%
+  mutate(colors_2024 = case_when(
+  party_perc_lead_2024 == "R_lead_0_5" ~ "#F6BDC0",
+  party_perc_lead_2024 == "R_lead_5" ~ "#F07470",
+  party_perc_lead_2024 == "R_lead_10" ~ "#EA4C46",
+  party_perc_lead_2024 == "R_lead_20" ~ "#DC1C13",
+  party_perc_lead_2024 == "D_lead_0_5" ~ "#ccf9ff",
+  party_perc_lead_2024 == "D_lead_5" ~ "#7ce8ff",
+  party_perc_lead_2024 == "D_lead_10" ~ "#00acdf",
+  party_perc_lead_2024 == "D_lead_20" ~ "#0080bf")) %>%
+  mutate(colors_2020 = case_when(
+ party_perc_lead == "R_lead_0_5" ~ "#F6BDC0",
+  party_perc_lead == "R_lead_5" ~ "#F07470",
+  party_perc_lead == "R_lead_10" ~ "#EA4C46",
+  party_perc_lead == "R_lead_20" ~ "#DC1C13",
+  party_perc_lead == "D_lead_0_5" ~ "#ccf9ff",
+  party_perc_lead == "D_lead_5" ~ "#7ce8ff",
+  party_perc_lead == "D_lead_10" ~ "#00acdf",
+  party_perc_lead == "D_lead_20" ~ "#0080bf"))
+
+
+nj_counties <- urbnmapr::counties %>%
+  filter(state_abbv == "NJ")
+
+results %>% 
+  left_join(nj_counties, by = "county_name") %>%
+  group_by(county_name, colors_2020, colors_2024) %>%
+  summarize(long_avg = mean(long),
+         lat_avg = mean(lat)) %>%
+  select(county_name, long_avg, lat_avg, colors_2020, colors_2024)
+
+results %>% 
+  left_join(nj_counties, by = "county_name") %>% 
+  ggplot(mapping = aes(long, lat, group = group, fill = colors_2020)) +
+  geom_polygon(color = "#000000", size = .25) +
+  scale_fill_identity(guide = "legend", labels = c("Biden 20+%", "Biden 10-20%", "Biden 5-10%", "Biden 0-5%", "Trump 20+%", "Trump 10-20%", "Trump 0-5%")) +
+  annotate("label", x = -74.59653, y = 39.46795, label = "Atlantic", size = 3, fill = "#7ce8ff", fontface = "bold") +
+  annotate("label", x = -73.95, y = 41.01, label = "Bergen", size = 3, fill = "#00acdf", fontface = "bold") +
+  annotate("label", x = -74.79452, y = 39.95452, label = "Burlington", size = 3, fill = "#00acdf", fontface = "bold") +
+  annotate("label", x = -75.01706, y = 39.85439, label = "Camden", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -74.78977, y = 39.13740, label = "Cape May", size = 3, fill = "#EA4C46", fontface = "bold") +
+  annotate("label", x = -75.16995,	y = 39.32692, label = "Cumberland", size = 3, fill = "#7ce8ff", fontface = "bold") +
+  annotate("label", x = -74.23008, y =	40.82000, label = "Essex", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -75.19278, y = 39.77334, label = "Gloucester", size = 3, fill = "#ccf9ff", fontface = "bold") +
+  annotate("label", x = -74.08801, y = 40.74333, label = "Hudson", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -74.99906, y =	40.51652, label = "Hunterdon", size = 3, fill = "#F6BDC0", fontface = "bold") +
+  annotate("label", x = -74.75530, y = 40.26312, label = "Mercer", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -74.38155, y = 40.46615, label = "Middlesex", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -74.18608, y = 40.32221, label = "Monmouth", size = 3, fill = "#F6BDC0", fontface = "bold") +
+  annotate("label", x = -74.49211, y = 40.87890, label = "Morris", size = 3, fill = "#ccf9ff", fontface = "bold") +
+  annotate("label", x = -74.23601, y = 39.86836, label = "Ocean", size = 3, fill = "#DC1C13", fontface = "bold") +
+  annotate("label", x = -74.29715, y = 40.99781, label = "Passaic", size = 3, fill = "#00acdf", fontface = "bold") +
+  annotate("label", x = -75.45424, y = 39.60956, label = "Salem", size = 3, fill = "#EA4C46", fontface = "bold") +
+  annotate("label", x = -74.60713, y = 40.57919, label = "Somerset", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -74.81589, y = 41.19893, label = "Sussex", size = 3, fill = "#EA4C46", fontface = "bold") +
+  annotate("label", x = -74.29556, y = 40.65290, label = "Union", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -75.10153, y = 40.84224, label = "Warren", size = 3, fill = "#EA4C46", fontface = "bold") +
+  coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
+  ggtitle("\nNew Jersey Election Results: 2020") +
+  labs(subtitle = "By county",
+       caption = "Source: CNN | github: julia-tache") +
+  theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
+        plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
+        panel.background = element_rect(fill = "#F5F5F5", color = NA),
+        panel.grid.major = element_line(color = "#F5F5F5"),
+        panel.grid.minor = element_line(color = "#F5F5F5"),
+        plot.title = element_text(size = 18, face = "bold", hjust = 0.25),
+        plot.subtitle = element_text(size = 12, hjust = 0.5),
+        plot.caption = element_text(size = 10, face = "italic", hjust = 0.5),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        text = element_text(family = "Georgia"),
+        legend.key.width = unit(.25, "in"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        legend.background = element_rect(fill = "#F5F5F5"))
+
+ggsave("nj_voters_map_2020.png", height = 7, width = 6)
+
+```
+
+
+```{r county map #2 - 2024 NJ Presidential Election Results}
+
+results %>% 
+  left_join(nj_counties, by = "county_name") %>% 
+  ggplot(mapping = aes(long, lat, group = group, fill = colors_2024)) +
+  geom_polygon(color = "#000000", size = .25) +
+  scale_fill_identity(guide = "legend", labels = c("Harris 20+%", "Harris 10-20%", "Harris 5-10%", "Harris 0-5%", "Trump 20+%", "Trump 10-20%", "Trump 5-10%", "Trump 0-5%")) +
+  annotate("label", x = -74.59653, y = 39.46795, label = "Atlantic", size = 3, fill = "#F6BDC0", fontface = "bold") +
+  annotate("label", x = -73.95, y = 41.01, label = "Bergen", size = 3, fill = "#ccf9ff", fontface = "bold") +
+  annotate("label", x = -74.79452, y = 39.95452, label = "Burlington", size = 3, fill = "#00acdf", fontface = "bold") +
+  annotate("label", x = -75.01706, y = 39.85439, label = "Camden", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -74.78977, y = 39.13740, label = "Cape May", size = 3, fill = "#EA4C46", fontface = "bold") +
+  annotate("label", x = -75.16995,	y = 39.32692, label = "Cumberland", size = 3, fill = "#F6BDC0", fontface = "bold") +
+  annotate("label", x = -74.23008, y =	40.82000, label = "Essex", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -75.19278, y = 39.77334, label = "Gloucester", size = 3, fill = "#F6BDC0", fontface = "bold") +
+  annotate("label", x = -74.08801, y = 40.74333, label = "Hudson", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -74.99906, y =	40.51652, label = "Hunterdon", size = 3, fill = "#F07470", fontface = "bold") +
+  annotate("label", x = -74.75530, y = 40.26312, label = "Mercer", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -74.38155, y = 40.46615, label = "Middlesex", size = 3, fill = "#7ce8ff", fontface = "bold") +
+  annotate("label", x = -74.18608, y = 40.32221, label = "Monmouth", size = 3, fill = "#EA4C46", fontface = "bold") +
+  annotate("label", x = -74.49211, y = 40.87890, label = "Morris", size = 3, fill = "#F6BDC0", fontface = "bold") +
+  annotate("label", x = -74.23601, y = 39.86836, label = "Ocean", size = 3, fill = "#DC1C13", fontface = "bold") +
+  annotate("label", x = -74.29715, y = 40.99781, label = "Passaic", size = 3, fill = "#F6BDC0", fontface = "bold") +
+  annotate("label", x = -75.45424, y = 39.60956, label = "Salem", size = 3, fill = "#EA4C46", fontface = "bold") +
+  annotate("label", x = -74.60713, y = 40.57919, label = "Somerset", size = 3, fill = "#00acdf", fontface = "bold") +
+  annotate("label", x = -74.81589, y = 41.19893, label = "Sussex", size = 3, fill = "#DC1C13", fontface = "bold") +
+  annotate("label", x = -74.29556, y = 40.65290, label = "Union", size = 3, fill = "#0080bf", fontface = "bold") +
+  annotate("label", x = -75.10153, y = 40.84224, label = "Warren", size = 3, fill = "#DC1C13", fontface = "bold") +
+  coord_map(projection = "albers", lat0 = 39, lat1 = 45) +
+  ggtitle("\nNew Jersey Election Results: 2024") +
+  labs(subtitle = "By county",
+       caption = "Source: CNN | github: julia-tache") +
+  theme(panel.background = element_rect(fill = "white"),
+        legend.key.width = unit(.25, "in"),
+        legend.title = element_blank(),
+        axis.title.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.ticks.y = element_blank()) +
+  theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
+        plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
+        panel.background = element_rect(fill = "#F5F5F5", color = NA),
+        panel.grid.major = element_line(color = "#F5F5F5"),
+        panel.grid.minor = element_line(color = "#F5F5F5"),
+        plot.title = element_text(size = 18, face = "bold", hjust = 0.25),
+        plot.subtitle = element_text(size = 12, hjust = 0.5),
+        plot.caption = element_text(size = 10, face = "italic", hjust = 0.5),
+        axis.title = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        text = element_text(family = "Georgia"),
+        legend.key.width = unit(.25, "in"),
+        legend.title = element_blank(),
+        legend.text = element_text(size = 10),
+        legend.background = element_rect(fill = "#F5F5F5"))
+
+ggsave("nj_voters_map_2024.png", height = 7, width = 6)
+
+```
+
+```{r}
+
+year <- c(2020, 2020, 2024, 2024)
+registered_voters <- c(2524345, 1445188, 2535123, 1629375)
+party <- c("Democrat", "Republicans", "Democrat", "Republicans")
+
+state_reg <- data.frame(year, county_name, registered_voters, party)
+
+state_reg %>%
+  ggplot(aes(x = party, y = registered_voters, fill = party)) +
+  facet_wrap(~year) +
+  geom_bar(position = position_dodge2(reverse = TRUE), stat = "identity") +
+  geom_text(aes(label = scales::comma(registered_rep_voters)), vjust = 2, size = 3, family = "Georgia", fontface = "bold", color = "white") +
+  scale_y_continuous(labels = scales::comma_format()) +
+  ggtitle("\nNew Jersey Voter Turnout Decreased in 2024") +
+  labs(subtitle = "Percentage of all ballots cast out of all registered voters\nfor the last two Presidential elections in total across the state and\nin counties that flipped from Democrat to Republican in 2024.",
+       caption = "Source: New Jersey Voter Information Portal | github: julia-tache") +
+  theme(plot.background = element_rect(fill = "#F5F5F5", color = NA),
+        plot.margin = margin(0.25, 0.25, 0.25, 0.6, "cm"),
+        panel.background = element_rect(fill = "#F5F5F5", color = NA),
+        panel.grid.major = element_line(color = "#F5F5F5"),
+        panel.grid.minor = element_line(color = "#F5F5F5"),
+        strip.text = element_text(size = 14),
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(size = 12, hjust = 0.5),
+        plot.caption = element_text(size = 10, face = "italic", hjust = 0.5),
+        legend.title = element_text(hjust = 0.5),
+        legend.background = element_rect(fill = "#F5F5F5"),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.y = element_blank(),
+        axis.text.y = element_text(size = 12),
+        axis.ticks = element_blank(),
+        text = element_text(family = "Georgia", size = 13))
+
+```
+
